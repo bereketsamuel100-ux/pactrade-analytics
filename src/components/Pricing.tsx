@@ -1,6 +1,7 @@
 import { Check, Star, Zap } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useState } from "react";
+import Link from "next/link";
 
 export const Pricing = () => {
   const [isYearly, setIsYearly] = useState(false);
@@ -177,14 +178,16 @@ export const Pricing = () => {
                 </div>
 
                 {/* CTA */}
-                <Button 
-                  variant={plan.popular ? "hero" : "default"}
-                  size="lg"
-                  className="w-full"
-                >
-                  {plan.popular && <Zap className="w-4 h-4" />}
-                  {plan.cta}
-                </Button>
+                <Link href="/auth/signin" className="w-full">
+                  <Button
+                    variant={plan.popular ? "hero" : "default"}
+                    size="lg"
+                    className="w-full"
+                  >
+                    {plan.popular && <Zap className="w-4 h-4" />}
+                    {plan.cta}
+                  </Button>
+                </Link>
               </div>
             </div>
           ))}
