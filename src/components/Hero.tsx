@@ -1,6 +1,7 @@
 import { Button } from "@/components/ui/button";
 import { PlayCircle, ArrowRight } from "lucide-react";
 import heroDashboard from "@/assets/hero-dashboard.jpg";
+import Link from "next/link";
 
 export const Hero = () => {
   return (
@@ -30,10 +31,12 @@ export const Hero = () => {
             
             {/* CTA Buttons */}
             <div className="flex flex-col sm:flex-row gap-4 justify-center items-center mb-16">
-              <Button variant="hero" size="xl" className="min-w-48">
-                Start Free Trial
-                <ArrowRight className="w-5 h-5" />
-              </Button>
+              <Link href="/auth/signin">
+                <Button variant="hero" size="xl" className="min-w-48">
+                  Start Free Trial
+                  <ArrowRight className="w-5 h-5" />
+                </Button>
+              </Link>
               <Button variant="outline" size="xl" className="min-w-48">
                 <PlayCircle className="w-5 h-5" />
                 Watch Demo

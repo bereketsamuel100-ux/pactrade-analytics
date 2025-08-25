@@ -1,0 +1,254 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// NextAuth.js Models
+model Account {
+  id                 String  @id @default(cuid())
+  userId             String
+  type               String
+  provider           String
+  providerAccountId  String
+  refresh_token      String? @db.Text
+  access_token       String? @db.Text
+  expires_at         Int?
+  token_type         String?
+  scope              String?
+  id_token           String? @db.Text
+  session_state      String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+}
+
+// Application Models
+model User {
+  id              String    @id @default(cuid())
+  name            String?
+  email           String?   @unique
+  emailVerified   DateTime?
+  image           String?
+  createdAt       DateTime  @default(now())
+
+  accounts        Account[]
+  sessions        Session[]
+  memberships     Membership[]
+  auditLogs       AuditLog[]
+  ownedWorkspaces Workspace[]
+}
+
+model Workspace {
+  id              String    @id @default(cuid())
+  name            String
+  ownerId         String
+  owner           User      @relation(fields: [ownerId], references: [id])
+  memberships     Membership[]
+  subscriptions   Subscription[]
+  brokerageAccounts BrokerageAccount[]
+  trades          Trade[]
+  tags            Tag[]
+  strategies      Strategy[]
+  journalEntries  JournalEntry[]
+  importJobs      ImportJob[]
+  files           File[]
+  metricSnapshots MetricSnapshot[]
+  auditLogs       AuditLog[]
+}
+
+model Membership {
+  id          String   @id @default(cuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id])
+  workspaceId String
+  workspace   Workspace @relation(fields: [workspaceId], references: [id])
+  role        Role     @default(MEMBER)
+  createdAt   DateTime @default(now())
+
+  @@unique([userId, workspaceId])
+}
+
+enum Role {
+  OWNER
+  MEMBER
+  READ_ONLY
+}
+
+model Subscription {
+  id                 String   @id @default(cuid())
+  workspaceId        String   @unique
+  workspace          Workspace @relation(fields: [workspaceId], references: [id])
+  stripeCustomerId   String   @unique
+  plan               String
+  status             String
+  currentPeriodEnd   DateTime
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+}
+
+model BrokerageAccount {
+  id            String   @id @default(cuid())
+  workspaceId   String
+  workspace     Workspace @relation(fields: [workspaceId], references: [id])
+  name          String
+  broker        String
+  baseCurrency  String
+  trades        Trade[]
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}
+
+model Trade {
+  id            String    @id @default(cuid())
+  workspaceId   String
+  workspace     Workspace @relation(fields: [workspaceId], references: [id])
+  brokerageAccountId String
+  brokerageAccount BrokerageAccount @relation(fields: [brokerageAccountId], references: [id])
+  symbol        String
+  market        String
+  side          String
+  quantity      Float
+  entryPrice    Float
+  exitPrice     Float
+  fees          Float
+  openedAt      DateTime
+  closedAt      DateTime
+  rMultiple     Float?
+  pnl           Float?
+  notes         String?
+  tags          TradeTag[]
+  strategies    TradeStrategy[]
+  journalEntries JournalEntry[]
+  files         File[]
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+}
+
+model Tag {
+  id          String     @id @default(cuid())
+  workspaceId String
+  workspace   Workspace  @relation(fields: [workspaceId], references: [id])
+  name        String
+  trades      TradeTag[]
+  createdAt   DateTime   @default(now())
+
+  @@unique([workspaceId, name])
+}
+
+model TradeTag {
+  tradeId String
+  trade   Trade  @relation(fields: [tradeId], references: [id])
+  tagId   String
+  tag     Tag    @relation(fields: [tagId], references: [id])
+
+  @@id([tradeId, tagId])
+}
+
+model Strategy {
+  id          String          @id @default(cuid())
+  workspaceId String
+  workspace   Workspace       @relation(fields: [workspaceId], references: [id])
+  name        String
+  description String?
+  trades      TradeStrategy[]
+  createdAt   DateTime        @default(now())
+
+  @@unique([workspaceId, name])
+}
+
+model TradeStrategy {
+  tradeId    String
+  trade      Trade    @relation(fields: [tradeId], references: [id])
+  strategyId String
+  strategy   Strategy @relation(fields: [strategyId], references: [id])
+
+  @@id([tradeId, strategyId])
+}
+
+model JournalEntry {
+  id            String   @id @default(cuid())
+  workspaceId   String
+  workspace     Workspace @relation(fields: [workspaceId], references: [id])
+  date          DateTime
+  title         String
+  content       String
+  mood          String?
+  linkedTradeId String?
+  linkedTrade   Trade?   @relation(fields: [linkedTradeId], references: [id])
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}
+
+model ImportJob {
+  id          String   @id @default(cuid())
+  workspaceId String
+  workspace   Workspace @relation(fields: [workspaceId], references: [id])
+  status      String // PENDING, PROCESSING, COMPLETED, FAILED
+  source      String // CSV, API
+  error       String?
+  startedAt   DateTime @default(now())
+  finishedAt  DateTime?
+}
+
+model File {
+  id            String   @id @default(cuid())
+  workspaceId   String
+  workspace     Workspace @relation(fields: [workspaceId], references: [id])
+  url           String
+  type          String // SCREENSHOT, CSV_RAW
+  linkedTradeId String?
+  linkedTrade   Trade?   @relation(fields: [linkedTradeId], references: [id])
+  createdAt     DateTime @default(now())
+}
+
+model MetricSnapshot {
+  id            String    @id @default(cuid())
+  workspaceId   String
+  workspace     Workspace @relation(fields: [workspaceId], references: [id])
+  range         String // e.g., '30d', '90d', 'YTD'
+  from          DateTime
+  to            DateTime
+  pnl           Float
+  winRate       Float
+  profitFactor  Float
+  expectancy    Float
+  maxDD         Float
+  createdAt     DateTime  @default(now())
+}
+
+model AuditLog {
+  id          String    @id @default(cuid())
+  workspaceId String
+  workspace   Workspace @relation(fields: [workspaceId], references: [id])
+  actorId     String
+  actor       User      @relation(fields: [actorId], references: [id])
+  action      String
+  entity      String
+  entityId    String
+  metadata    Json?
+  createdAt   DateTime  @default(now())
+}
